@@ -1,12 +1,3 @@
-# --------------------------------------------------------------------------- #
-
-# Copyright (c) 2016 - Arroyo Networks - All Rights Reserved
-# Proprietary and Confidential
-#
-# Unauthorized copying of this file, via any medium, is strictly prohibited.
-
-# --------------------------------------------------------------------------- #
-
 
 import logging
 import warnings
@@ -27,13 +18,15 @@ from . import EncodingType
 # --------------------------------------------------------------------------- #
 
 
+__all__ = ["KeyAlgorithmType", "PublicKey", "PrivateKey"]
+
 LOG = logging.getLogger(__name__)
 
 
 # --------------------------------------------------------------------------- #
 
 
-class AlgorithmType(str, Enum):
+class KeyAlgorithmType(str, Enum):
     # EdDSA (ED25519) is current not supported
     RSA = "RSA"
     DSA = "DSA"
@@ -41,9 +34,9 @@ class AlgorithmType(str, Enum):
 
 
 _KEY_MIN_SIZES = {
-    AlgorithmType.RSA: 2048 if datetime.now().year < 2020 else 4096,
-    AlgorithmType.DSA: 2048 if datetime.now().year < 2030 else 3072,
-    AlgorithmType.ECDSA: 224,
+    KeyAlgorithmType.RSA: 2048 if datetime.now().year < 2020 else 4096,
+    KeyAlgorithmType.DSA: 2048 if datetime.now().year < 2030 else 3072,
+    KeyAlgorithmType.ECDSA: 224,
 }
 
 
@@ -56,7 +49,7 @@ _P_CURVES = {
 }
 
 
-def _type_from_instance(instance) -> AlgorithmType:
+def _type_from_instance(instance) -> KeyAlgorithmType:
     """
     Returns the corresponding AlgorithmType for a given class.
 
@@ -68,12 +61,12 @@ def _type_from_instance(instance) -> AlgorithmType:
      ``AlgorithmType``.
     """
     if isinstance(instance, (rsa.RSAPublicKey, rsa.RSAPrivateKey)):
-        return AlgorithmType.RSA
+        return KeyAlgorithmType.RSA
     if isinstance(instance, (dsa.DSAPublicKey, dsa.DSAPrivateKey)):
-        return AlgorithmType.DSA
+        return KeyAlgorithmType.DSA
     if isinstance(instance, (ec.EllipticCurvePublicKey,
                              ec.EllipticCurvePrivateKey)):
-        return AlgorithmType.ECDSA
+        return KeyAlgorithmType.ECDSA
 
     raise TypeError("Could not determine AlgorithmType for given class for "
                     "{}".format(instance.__class__))
@@ -120,7 +113,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         """
         self.__encoding = None
         try:
-            self.__algorithm = AlgorithmType(_type_from_instance(key))
+            self.__algorithm = KeyAlgorithmType(_type_from_instance(key))
         except TypeError:
             raise TypeError("Unsupported Key Algorithm or Type")
         self._key = key
@@ -145,7 +138,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         return '<{0}, {1}-{2}/{3}>'.format(name, alg, self.size, enc)
 
     @property
-    def algorithm(self) -> AlgorithmType:
+    def algorithm(self) -> KeyAlgorithmType:
         """
         Returns the key algorithm type.
         """
@@ -174,7 +167,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         """
         Returns the key size.
         """
-        if self.algorithm is AlgorithmType.ECDSA:
+        if self.algorithm is KeyAlgorithmType.ECDSA:
             return self._key.curve.key_size
         return self._key.key_size
 
@@ -300,7 +293,7 @@ class PrivateKey(AsymmetricKey):
     """
 
     @classmethod
-    def generate(cls, algorithm: AlgorithmType, *,
+    def generate(cls, algorithm: KeyAlgorithmType, *,
                  size: int = None) -> "PrivateKey":
         """
         Generates a new private key using the given algorithm (key type).
@@ -319,15 +312,15 @@ class PrivateKey(AsymmetricKey):
         :raises TypeError: If the given algorithm is an invalid AlgorithmType.
         :raises TypeError: If the given key size is not an integer.
         """
-        algorithm = AlgorithmType(algorithm)
+        algorithm = KeyAlgorithmType(algorithm)
         if size:
             size = int(size)
         size = size or _KEY_MIN_SIZES[algorithm]
 
         # RSA Key Generation
-        if algorithm is AlgorithmType.RSA:
+        if algorithm is KeyAlgorithmType.RSA:
 
-            if size < _KEY_MIN_SIZES[AlgorithmType.RSA]:
+            if size < _KEY_MIN_SIZES[KeyAlgorithmType.RSA]:
                 warnings.warn("RSA Key Size '{}' Considered Weak".format(size))
 
             key = rsa.generate_private_key(
@@ -337,9 +330,9 @@ class PrivateKey(AsymmetricKey):
             )
 
         # DSA Key Generation
-        elif algorithm is AlgorithmType.DSA:
+        elif algorithm is KeyAlgorithmType.DSA:
 
-            if size < _KEY_MIN_SIZES[AlgorithmType.DSA]:
+            if size < _KEY_MIN_SIZES[KeyAlgorithmType.DSA]:
                 warnings.warn("DSA Key Size '{}' Considered Weak".format(size))
 
             key = dsa.generate_private_key(

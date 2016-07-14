@@ -1,12 +1,3 @@
-# --------------------------------------------------------------------------- #
-
-# Copyright (c) 2016 - Arroyo Networks - All Rights Reserved
-# Proprietary and Confidential
-#
-# Unauthorized copying of this file, via any medium, is strictly prohibited.
-
-# --------------------------------------------------------------------------- #
-
 
 import logging
 
@@ -20,6 +11,8 @@ from . import EncodingType
 
 # --------------------------------------------------------------------------- #
 
+
+__all__ = ["X509Cert"]
 
 LOG = logging.getLogger(__name__)
 

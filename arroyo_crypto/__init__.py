@@ -1,9 +1,7 @@
-from . import crypto
-
 
 # Please refrain from specifying a micro version if possible.
 # --------------------------------------------------------------------------- #
-VERSION = (0, 1, 'b1', 'dev0')
+VERSION = (1, 0, 'b1')
 # --------------------------------------------------------------------------- #
 
 
@@ -20,5 +18,3 @@ def _get_version(vt):                                                           
 __version__ = _get_version(VERSION)
 
 del _get_version
-
-

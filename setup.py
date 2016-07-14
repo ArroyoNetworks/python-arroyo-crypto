@@ -78,13 +78,15 @@ setup(
     tests_require=[
         'pytest',
         'pytest-flake8',
+        'pytest-cov'
     ],
     entry_points={
         'arroyo': [
             'crypto = arroyo_crypto'
         ]
     },
-    keywords=["x509", "rsa", "dsa", "ecdsa", "crypto", "asymmetric"],
+    keywords=["x509", "rsa", "dsa", "ecdsa", "crypto", "asymmetric",
+              "cryptography", "ssl", "tls"],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',

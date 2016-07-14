@@ -9,6 +9,8 @@ matrix:
   allow_failures:
     - python: "3.5-dev"
     - python: "nightly"
+before_install:
+  - pip install codecov
 install:
   - pip install -e .
 before_script:
@@ -16,3 +18,5 @@ before_script:
   - pip install pytest-flake8
 script:
   - python setup.py test
+after_success:
+  - codecov

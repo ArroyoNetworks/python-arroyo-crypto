@@ -32,10 +32,15 @@ including x509 and Asymmetrical Key classes.
 If you require fine-tuned cryptography settings, consider using a more suitable
 python package, such as `cryptography` or `pyopenssl`.
 
+This plugin provides two facilities:
+
+:x509: Provides high level classes for interacting with x509 objects.
+:asymmetric: Provides high level classes for interacting ith asymmetric keys.
+
 
 Installation
 ============
-Arroyo Crypto is now available on PyPI:
+This package is available on PyPI:
 
 .. code:: console
 
@@ -44,10 +49,11 @@ Arroyo Crypto is now available on PyPI:
 
 Dependencies
 ============
-Python 3.5 or greater
+
+:Python>=3.5: Python version restriction of parent `arroyo` package.
 
 Required
 --------
 
 :arroyo: Provides the base package this plugin is being installed into.
-:cryptography: Provides the implementation for x509 and asymmetrical keys.
+:cryptography>=1.4: Provides the implementation for x509 and asymmetrical keys.
