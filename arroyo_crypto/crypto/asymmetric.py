@@ -126,7 +126,7 @@ class AsymmetricKey(metaclass=ABCMeta):
 
     @abstractmethod
     def __eq__(self, other):
-        ...
+        ...                                                   # pragma: nocover
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -176,7 +176,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         """
         Returns the key as bytes.
         """
-        ...
+        ...                                                   # pragma: nocover
 
     def to_file(self, path: str, **kwargs) -> bytes:
         """
