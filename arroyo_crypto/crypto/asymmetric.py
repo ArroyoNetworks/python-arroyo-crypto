@@ -1,18 +1,33 @@
+# --------------------------------------------------------------------------- #
+
 
 import logging
 import warnings
+import json
 from datetime import datetime
 from enum import Enum
+from math import ceil
 
 from abc import ABCMeta, abstractmethod
 
 from cryptography.hazmat.primitives.asymmetric import rsa, dsa, ec
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 
-from arroyo.utils import file_to_bytes, bytes_to_file
+from arroyo.utils import (
+    file_to_bytes, bytes_to_file, jose_b64encode
+)
 
 from . import EncodingType
+
+
+# --------------------------------------------------------------------------- #
+
+# Typing
+
+from typing import Union
+
+_STR_TYPE = Union[bytes, str]
 
 
 # --------------------------------------------------------------------------- #
@@ -70,6 +85,28 @@ def _type_from_instance(instance) -> KeyAlgorithmType:
 
     raise TypeError("Could not determine AlgorithmType for given class for "
                     "{}".format(instance.__class__))
+
+
+def _prepare_jwk_num(num):
+    # NOTE: --
+    # Some implementations will but a leading null byte in front of key
+    # numbers to remove the ambiguity with their sign, however JOSE/JWK
+    # requires that there be no null bytes.
+    #
+    # While this does not affect
+    # signing operations, it will cause the fingerprint/thumbprint to
+    # be wrong.
+
+    if isinstance(num, int):
+        num = num.to_bytes(ceil(num.bit_length() / 8), "big")
+
+    if isinstance(num, bytes):
+        num = jose_b64encode(num)
+
+    return num
+
+
+# --------------------------------------------------------------------------- #
 
 
 class AsymmetricKey(metaclass=ABCMeta):
@@ -163,6 +200,22 @@ class AsymmetricKey(metaclass=ABCMeta):
         self.__encoding = value
 
     @property
+    def jwk_fingerprint(self) -> str:
+        try:
+            serial_jwk = json.dumps(
+                self.to_jwk(),
+                sort_keys=True,
+                separators=(',', ':')
+            )
+        except TypeError:
+            raise
+
+        jwk_hash = hashes.Hash(hashes.SHA256(), default_backend())
+        jwk_hash.update(serial_jwk.encode())
+
+        return jose_b64encode(jwk_hash.finalize())
+
+    @property
     def size(self) -> int:
         """
         Returns the key size.
@@ -190,6 +243,19 @@ class AsymmetricKey(metaclass=ABCMeta):
             path, self.to_bytes(**kwargs)
         )
 
+    @abstractmethod
+    def to_jwk(self) -> dict:
+        """
+        Convert the key to JWK (JSON Web Key) format.
+
+        :return: A dictionary representation of this key in JWK format.
+        """
+        if self.algorithm is KeyAlgorithmType.DSA:
+            raise TypeError("DSA keys cannot be converted to JWK, "
+                            "see RFC 7517")
+
+        return dict(kty=self.algorithm.upper())
+
 
 class PublicKey(AsymmetricKey):
     """
@@ -197,7 +263,7 @@ class PublicKey(AsymmetricKey):
     keys.
     """
 
-    def __init__(self, data: bytes):
+    def __init__(self, data: _STR_TYPE):
         """
         Creates a new ``PublicKey`` representing the given public bytes.
 
@@ -284,6 +350,16 @@ class PublicKey(AsymmetricKey):
             else serialization.PublicFormat.PKCS1
         )
         return self._key.public_bytes(encoding, fmt)
+
+    def to_jwk(self) -> dict:
+        jwk = super().to_jwk()
+        if self.algorithm is KeyAlgorithmType.RSA:
+            jwk['n'] = _prepare_jwk_num(self._key.public_numbers().n)
+            jwk['e'] = _prepare_jwk_num(self._key.public_numbers().e)
+        else:
+            raise NotImplementedError("Conversion to JWK not implemented"
+                                      " for this type of key yet.")
+        return jwk
 
 
 class PrivateKey(AsymmetricKey):
@@ -374,7 +450,7 @@ class PrivateKey(AsymmetricKey):
 
         return cls(data=key_bytes)
 
-    def __init__(self, data: bytes, password: bytes = None):
+    def __init__(self, data: _STR_TYPE, password: _STR_TYPE = None):
         """
         Creates a new ``PrivateKey`` representing the given private bytes.
 
@@ -479,3 +555,16 @@ class PrivateKey(AsymmetricKey):
         encoding = encoding or self.encoding
         fmt = fmt or serialization.PrivateFormat.PKCS8
         return self._key.private_bytes(encoding, fmt, password)
+
+    def to_jwk(self):
+        jwk = self.public_key.to_jwk()
+
+        if self.algorithm is KeyAlgorithmType.RSA:
+            jwk['d'] = _prepare_jwk_num(self._key.private_numbers().d)
+            jwk['p'] = _prepare_jwk_num(self._key.private_numbers().p)
+            jwk['q'] = _prepare_jwk_num(self._key.private_numbers().q)
+            jwk['dp'] = _prepare_jwk_num(self._key.private_numbers().dmp1)
+            jwk['dq'] = _prepare_jwk_num(self._key.private_numbers().dmq1)
+            jwk['qi'] = _prepare_jwk_num(self._key.private_numbers().iqmp)
+
+        return jwk

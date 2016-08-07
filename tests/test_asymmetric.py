@@ -4,6 +4,8 @@ import os
 import tempfile
 import filecmp
 
+from arroyo import utils
+
 import pytest
 
 
@@ -57,6 +59,17 @@ def get_private_key_filename(key_type, key_encoding, encrypted=False):
     return os.path.join(HERE, "keys", key_name)
 
 
+class FakeTestKey(asymmetric.AsymmetricKey):
+    def __eq__(self, other):
+        pass
+
+    def to_bytes(self, *, encoding: EncodingType, fmt: str):
+        pass
+
+    def to_jwk(self):
+        return b'\x00\x01'
+
+
 # --------------------------------------------------------------------------- #
 
 
@@ -74,6 +87,19 @@ def empty_file(request):
     request.addfinalizer(finalizer)
 
     return tmp.name
+
+
+@pytest.fixture
+def nonempty_file(empty_file):
+    """
+    Returns the path of an non-empty temp. file that will automatically be
+    deleted when the test ends.
+    """
+
+    with open(empty_file, mode='wb') as f:
+        f.write(os.urandom(100))
+
+    return empty_file
 
 
 @pytest.fixture(scope="session", params=KeyAlgorithmType)
@@ -127,6 +153,28 @@ def test_load_encrypted_private_key_files(key_algorithm, private_key_encoding):
 
     assert key.algorithm == key_algorithm
     assert key.encoding == private_key_encoding
+
+
+def test_load_encrypted_private_key_files_str_pass(key_algorithm,
+                                                   private_key_encoding):
+
+    key_file = get_private_key_filename(key_algorithm, private_key_encoding,
+                                        encrypted=True)
+    key = asymmetric.PrivateKey.from_file(key_file, password=PASSWORD.decode())
+
+    assert isinstance(key, asymmetric.PrivateKey)
+
+    assert key.algorithm == key_algorithm
+    assert key.encoding == private_key_encoding
+
+
+def test_load_encrypted_private_key_files_inv_pass_type(key_algorithm,
+                                                        private_key_encoding):
+
+    key_file = get_private_key_filename(key_algorithm, private_key_encoding,
+                                        encrypted=True)
+    with pytest.raises(TypeError):
+        asymmetric.PrivateKey.from_file(key_file, password=12345)
 
 
 def test_unsupported_key_algorithm():
@@ -189,6 +237,7 @@ def test_private_key_equality():
     assert key1 is not key2
     assert key1 == key2
     assert not key1 != key2
+    assert key1 != 12345
 
 
 def test_public_key_equality():
@@ -202,6 +251,10 @@ def test_public_key_equality():
     assert priv_key.public_key is not pub_key
     assert priv_key.public_key == pub_key
     assert not priv_key.public_key != pub_key
+    assert pub_key != 12345
+
+    # Test the __contains__ Operator
+    assert pub_key in priv_key
 
 
 def test_size_in_repr(key_algorithm):
@@ -263,4 +316,174 @@ def test_public_key_to_file(key_algorithm, public_key_encoding, empty_file):
     key.to_file(empty_file)
 
     assert filecmp.cmp(key_file, empty_file)
+
+
+def test_rsa_private_key_to_jwk():
+
+    key_file = get_private_key_filename(KeyAlgorithmType.RSA, EncodingType.PEM)
+    key = asymmetric.PrivateKey.from_file(key_file)
+
+    jwk = key.to_jwk()
+
+    assert jwk['kty'] == 'RSA'
+
+    assert 'n' in jwk
+    assert 'e' in jwk
+    assert 'd' in jwk
+    assert 'p' in jwk
+    assert 'q' in jwk
+    assert 'dp' in jwk
+    assert 'dq' in jwk
+    assert 'qi' in jwk
+
+
+def test_dsa_private_key_to_jwk():
+    """Test to ensure that attempting to convert a DSA key to a JWK results
+    in an exception thrown, since DSA keys cannot be represented as JWKs."""
+
+    key_file = get_private_key_filename(KeyAlgorithmType.DSA, EncodingType.PEM)
+    key = asymmetric.PrivateKey.from_file(key_file)
+
+    with pytest.raises(TypeError):
+        key.to_jwk()
+
+
+def test_ecdsa_private_key_to_jwk():
+
+    key_file = get_private_key_filename(KeyAlgorithmType.ECDSA,
+                                        EncodingType.PEM)
+    key = asymmetric.PrivateKey.from_file(key_file)
+
+    with pytest.raises(NotImplementedError):
+        key.to_jwk()
+
+
+def test_rsa_private_key_jwk_fingerprint():
+
+    key_file = get_private_key_filename(KeyAlgorithmType.RSA, EncodingType.PEM)
+    key = asymmetric.PrivateKey.from_file(key_file)
+
+    jwk_fingerprint = key.jwk_fingerprint
+
+    assert isinstance(jwk_fingerprint, str)
+
+    # Ensure the result can be decoded as JOSE base64 and appears to be a
+    # SHA256 result
+    decoded = utils.jose_b64decode(jwk_fingerprint)
+    assert len(decoded) * 8 == 256
+
+
+def test_invalid_key_type():
+
+    with pytest.raises(TypeError):
+        FakeTestKey(key=25)
+
+
+def test_invalid_to_jwk():
+
+    key_file = get_private_key_filename(KeyAlgorithmType.RSA, EncodingType.PEM)
+    key = asymmetric.PrivateKey.from_file(key_file)
+
+    new_key = FakeTestKey(key=key._key)
+    with pytest.raises(TypeError):
+        new_key.jwk_fingerprint
+
+
+def test_direct_public_key_creation_as_str(key_algorithm):
+
+    key_file = get_public_key_filename(key_algorithm, EncodingType.PEM)
+    with open(key_file, 'r') as f:
+        key_data = f.read()
+
+    asymmetric.PublicKey(data=key_data)
+
+
+def test_direct_public_key_invalid_data():
+
+    with pytest.raises(TypeError):
+        asymmetric.PublicKey(data=54321)
+
+
+def test_direct_private_key_creation_as_str(key_algorithm):
+
+    key_file = get_private_key_filename(key_algorithm, EncodingType.PEM)
+    with open(key_file, 'r') as f:
+        key_data = f.read()
+
+    asymmetric.PrivateKey(data=key_data)
+
+
+def test_direct_private_key_invalid_data():
+
+    with pytest.raises(TypeError):
+        asymmetric.PrivateKey(data=54321)
+
+
+def test_invalid_public_key_file(nonempty_file):
+
+    with pytest.raises(ValueError):
+        asymmetric.PublicKey.from_file(nonempty_file)
+
+
+def test_invalid_private_key_file(nonempty_file):
+
+    with pytest.raises(ValueError):
+        asymmetric.PrivateKey.from_file(nonempty_file)
+
+
+# --------------------------------------------------------------------------- #
+
+# Key Generation Tests
+
+
+def test_strong_key_generation(recwarn, key_algorithm):
+
+    key = asymmetric.PrivateKey.generate(key_algorithm)
+
+    # Ensure that the default parameters generate a "strong" key
+    # (thus no warnings were raised)
+    assert len(recwarn) == 0
+    assert key.algorithm is key_algorithm
+
+
+def test_weak_rsa_key_generation(recwarn):
+
+    key = asymmetric.PrivateKey.generate(KeyAlgorithmType.RSA, size=1024)
+
+    # Ensure that a warning was raised since the key size will generate a
+    # "weak" key
+    assert len(recwarn) > 0
+    assert key.algorithm is KeyAlgorithmType.RSA
+
+
+def test_weak_dsa_key_generation(recwarn):
+
+    key = asymmetric.PrivateKey.generate(KeyAlgorithmType.DSA, size=1024)
+
+    # Ensure that a warning was raised since the key size will generate a
+    # "weak" key
+    assert len(recwarn) > 0
+    assert key.algorithm is KeyAlgorithmType.DSA
+
+
+def test_invalid_ecdsa_curve_size():
+
+    with pytest.warns(UserWarning) as record:
+        asymmetric.PrivateKey.generate(KeyAlgorithmType.ECDSA, size=1)
+
+    # Ensure that a warning was raised about the key size being too small
+    # and that it was rounded up.
+    assert len(record) == 1
+    assert "Rounding up" in str(record[0].message)
+
+
+def test_too_large_ecdsa_curve_size():
+
+    with pytest.warns(UserWarning) as record:
+        asymmetric.PrivateKey.generate(KeyAlgorithmType.ECDSA, size=9999999999)
+
+    # Ensure that a warning was raised about the key size being too small
+    # and that it was rounded up.
+    assert len(record) == 1
+    assert "Rounding down" in str(record[0].message)
 
