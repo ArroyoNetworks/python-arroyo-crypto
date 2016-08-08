@@ -72,13 +72,14 @@ setup(
     license='MIT',
     platforms=['any'],
     install_requires=[
-        'arroyo',
+        'arroyo>=1.1',
         'cryptography>=1.4'
     ],
     tests_require=[
         'pytest',
         'pytest-flake8',
-        'pytest-cov'
+        'pytest-cov',
+        'pytest-timeout'
     ],
     entry_points={
         'arroyo': [
