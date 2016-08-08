@@ -87,7 +87,7 @@ setup(
         ]
     },
     keywords=["x509", "rsa", "dsa", "ecdsa", "crypto", "asymmetric",
-              "cryptography", "ssl", "tls"],
+              "cryptography", "ssl", "tls", "jose", "jwk", "jwt"],
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
