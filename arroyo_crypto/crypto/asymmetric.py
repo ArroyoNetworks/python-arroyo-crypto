@@ -200,7 +200,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         self.__encoding = value
 
     @property
-    def jwk_fingerprint(self) -> str:
+    def jwk_thumbprint(self) -> str:
         try:
             serial_jwk = json.dumps(
                 self.to_jwk(),

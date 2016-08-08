@@ -329,18 +329,18 @@ def test_ecdsa_private_key_to_jwk():
         key.to_jwk()
 
 
-def test_rsa_private_key_jwk_fingerprint():
+def test_rsa_private_key_jwk_thumbprint():
 
     key_file = get_private_key_filename(KeyAlgorithmType.RSA, EncodingType.PEM)
     key = asymmetric.PrivateKey.from_file(key_file)
 
-    jwk_fingerprint = key.jwk_fingerprint
+    jwk_thumbprint = key.jwk_thumbprint
 
-    assert isinstance(jwk_fingerprint, str)
+    assert isinstance(jwk_thumbprint, str)
 
     # Ensure the result can be decoded as JOSE base64 and appears to be a
     # SHA256 result
-    decoded = utils.jose_b64decode(jwk_fingerprint)
+    decoded = utils.jose_b64decode(jwk_thumbprint)
     assert len(decoded) * 8 == 256
 
 
@@ -357,7 +357,7 @@ def test_invalid_to_jwk():
 
     new_key = FakeTestKey(key=key._key)
     with pytest.raises(TypeError):
-        new_key.jwk_fingerprint
+        new_key.jwk_thumbprint
 
 
 def test_direct_public_key_creation_as_str(key_algorithm):
