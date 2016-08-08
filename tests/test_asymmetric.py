@@ -1,7 +1,7 @@
+# --------------------------------------------------------------------------- #
 
 
 import os
-import tempfile
 import filecmp
 
 from arroyo import utils
@@ -71,35 +71,6 @@ class FakeTestKey(asymmetric.AsymmetricKey):
 
 
 # --------------------------------------------------------------------------- #
-
-
-@pytest.fixture
-def empty_file(request):
-    """
-    Returns the path of an empty temp. file that will be automatically be
-    deleted when the test ends.
-    """
-
-    tmp = tempfile.NamedTemporaryFile(delete=False)
-
-    def finalizer():
-        os.remove(tmp.name)
-    request.addfinalizer(finalizer)
-
-    return tmp.name
-
-
-@pytest.fixture
-def nonempty_file(empty_file):
-    """
-    Returns the path of an non-empty temp. file that will automatically be
-    deleted when the test ends.
-    """
-
-    with open(empty_file, mode='wb') as f:
-        f.write(os.urandom(100))
-
-    return empty_file
 
 
 @pytest.fixture(scope="session", params=KeyAlgorithmType)

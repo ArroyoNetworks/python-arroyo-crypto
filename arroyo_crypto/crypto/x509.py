@@ -71,6 +71,9 @@ class x509Base(metaclass=ABCMeta):
 
         return this_bytes == other_bytes
 
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
     @property
     def encoding(self) -> EncodingType:
         """
@@ -133,8 +136,6 @@ class x509Cert(x509Base):
         :raises ValueError: If the given value for ``data`` cannot be properly
          decoded
         """
-        if isinstance(data, str):
-            data = data.encode()
 
         if not isinstance(data, bytes):
             raise TypeError("Value of 'data' must be bytes")
@@ -211,9 +212,6 @@ class x509CertSignReq(x509Base):
         :raises ValueError: If the given value for ``data`` cannot be properly
          decoded
         """
-        if isinstance(data, str):
-            data = data.encode()
-
         if not isinstance(data, bytes):
             raise TypeError("Value of 'data' must be bytes")
 
@@ -238,7 +236,7 @@ class x509CertSignReq(x509Base):
         raise ValueError("Could not find a suitable encoding for 'data' "
                          "bytes, the data may not be a valid X509 CSR")
 
-    def to_bytes(self, *, encoding: EncodingType) -> bytes:
+    def to_bytes(self, *, encoding: EncodingType = None) -> bytes:
         """
         Returns the CSR as bytes.
 
