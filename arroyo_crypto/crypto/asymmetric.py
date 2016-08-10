@@ -169,7 +169,7 @@ class AsymmetricKey(metaclass=ABCMeta):
         return not self.__eq__(other)
 
     def __repr__(self):
-        name = str(self.__class__).strip('<').rstrip('>')
+        name = str(self.__class__).strip("<class ").strip("'").rstrip("'>")
         alg = self.algorithm.value
         enc = self.encoding.value
         return '<{0}, {1}-{2}/{3}>'.format(name, alg, self.size, enc)
