@@ -7,7 +7,7 @@ from abc import ABCMeta, abstractmethod
 import collections
 
 from cryptography import x509
-from cryptography.x509.oid import NameOID
+from cryptography.x509.oid import NameOID, ExtensionOID
 from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
 
@@ -335,6 +335,14 @@ class x509CertSignReq(x509Base):
         # Could not load - bytes not in suitable format.
         raise ValueError("Could not find a suitable encoding for 'data' "
                          "bytes, the data may not be a valid X509 CSR")
+
+    def get_subj_alt_dns_names(self) -> List:
+
+        san = self._x509_obj.extensions.get_extension_for_oid(
+            ExtensionOID.SUBJECT_ALTERNATIVE_NAME
+        )
+
+        return san.value.get_values_for_type(x509.DNSName)
 
     def to_bytes(self, *, encoding: EncodingType = None) -> bytes:
         """

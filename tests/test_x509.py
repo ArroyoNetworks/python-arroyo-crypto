@@ -360,10 +360,11 @@ def test_generate_empty_list_alt_dns_name():
 def test_generate_full_dn_single_alt_dns_name(key_algorithm):
 
     key = PrivateKey.generate(key_algorithm)
+    subj_alt_name = "seglberg.arroyo.io"
 
     csr = x509.x509CertSignReq.generate(
         key,
-        "seglberg.arroyo.io",
+        subj_alt_name,
         CN="*.seglberg.arroyo.io",
         O="Arroyo Networks, LLC",
         OU="Elite Squad Delta Force 7",
@@ -371,15 +372,18 @@ def test_generate_full_dn_single_alt_dns_name(key_algorithm):
         ST="Michigan",
         C="US"
     )
+
+    assert csr.get_subj_alt_dns_names() == [subj_alt_name]
 
 
 def test_generate_full_dn_multi_alt_dns_name(key_algorithm):
 
     key = PrivateKey.generate(key_algorithm)
+    subj_alt_names = ["seglberg.arroyo.io", "test.arroyo.io"]
 
     csr = x509.x509CertSignReq.generate(
         key,
-        ["seglberg.arroyo.io", "test.arroyo.io"],
+        subj_alt_names,
         CN="*.seglberg.arroyo.io",
         O="Arroyo Networks, LLC",
         OU="Elite Squad Delta Force 7",
@@ -387,6 +391,8 @@ def test_generate_full_dn_multi_alt_dns_name(key_algorithm):
         ST="Michigan",
         C="US"
     )
+
+    assert csr.get_subj_alt_dns_names() == subj_alt_names
 
 
 def test_generate_invalid_dn_value():
