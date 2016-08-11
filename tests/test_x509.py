@@ -5,7 +5,7 @@ import os
 import filecmp
 
 from arroyo import utils
-from arroyo.crypto import PublicKey
+from arroyo.crypto import PublicKey, PrivateKey
 
 import pytest
 
@@ -313,3 +313,89 @@ def test_csr_invalid_data_value():
 
     with pytest.raises(ValueError):
         x509.x509CertSignReq(data=b'\x00\x01\x02')
+
+
+def test_generate_no_dn_single_alt_dns_name(key_algorithm):
+
+    key = PrivateKey.generate(key_algorithm)
+
+    csr = x509.x509CertSignReq.generate(
+        key,
+        "seglberg.arroyo.io"
+    )
+
+
+def test_generate_no_dn_multiple_alt_dns_name(key_algorithm):
+
+    key = PrivateKey.generate(key_algorithm)
+
+    csr = x509.x509CertSignReq.generate(
+        key,
+        ["seglberg.arroyo.io", "test.arroyo.io"]
+    )
+
+
+def test_generate_malformed_alt_dns_name():
+
+    key = PrivateKey.generate(KeyAlgorithmType.DSA)
+
+    with pytest.raises(ValueError):
+        csr = x509.x509CertSignReq.generate(
+            key,
+            "`this is not valid`"
+        )
+
+
+def test_generate_empty_list_alt_dns_name():
+
+    key = PrivateKey.generate(KeyAlgorithmType.DSA)
+
+    with pytest.raises(ValueError):
+        csr = x509.x509CertSignReq.generate(
+            key,
+            []
+        )
+
+
+def test_generate_full_dn_single_alt_dns_name(key_algorithm):
+
+    key = PrivateKey.generate(key_algorithm)
+
+    csr = x509.x509CertSignReq.generate(
+        key,
+        "seglberg.arroyo.io",
+        CN="*.seglberg.arroyo.io",
+        O="Arroyo Networks, LLC",
+        OU="Elite Squad Delta Force 7",
+        L="Hell",
+        ST="Michigan",
+        C="US"
+    )
+
+
+def test_generate_full_dn_multi_alt_dns_name(key_algorithm):
+
+    key = PrivateKey.generate(key_algorithm)
+
+    csr = x509.x509CertSignReq.generate(
+        key,
+        ["seglberg.arroyo.io", "test.arroyo.io"],
+        CN="*.seglberg.arroyo.io",
+        O="Arroyo Networks, LLC",
+        OU="Elite Squad Delta Force 7",
+        L="Hell",
+        ST="Michigan",
+        C="US"
+    )
+
+
+def test_generate_invalid_dn_value():
+
+    key = PrivateKey.generate(KeyAlgorithmType.DSA)
+
+    with pytest.raises(ValueError):
+        csr = x509.x509CertSignReq.generate(
+            key,
+            "seglberg.arroyo.io",
+            C="Not A Valid Country :)"
+        )

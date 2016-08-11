@@ -9,6 +9,9 @@ import random
 import pytest
 
 
+from arroyo_crypto.crypto import KeyAlgorithmType
+
+
 # --------------------------------------------------------------------------- #
 
 
@@ -52,3 +55,8 @@ def nonexisting_file():
         r = ''.join(random.choice(choices + string.digits) for _ in range(25))
         filename = os.path.join("/", "tmp", r)
     return filename
+
+
+@pytest.fixture(scope="session", params=KeyAlgorithmType)
+def key_algorithm(request):
+    return request.param

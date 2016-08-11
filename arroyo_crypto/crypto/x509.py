@@ -4,15 +4,30 @@
 import logging
 
 from abc import ABCMeta, abstractmethod
+import collections
 
 from cryptography import x509
-from cryptography.hazmat.primitives import serialization
+from cryptography.x509.oid import NameOID
+from cryptography.hazmat.primitives import serialization, hashes
 from cryptography.hazmat.backends import default_backend
+
+from idna.core import InvalidCodepoint
 
 from arroyo.crypto import PublicKey
 from arroyo.utils import file_to_bytes, bytes_to_file
 
 from . import EncodingType
+
+
+# --------------------------------------------------------------------------- #
+
+# Typing
+
+from typing import Union, List
+from arroyo.crypto import PrivateKey
+
+
+_STR_LIST_TYPE = Union[List[str], str]
 
 
 # --------------------------------------------------------------------------- #
@@ -195,6 +210,91 @@ class x509CertSignReq(x509Base):
     """
     High-level abstraction class for x509 Certificate Signing Requests (CSRs).
     """
+
+    @classmethod
+    def generate(cls, key: PrivateKey, subj_alt_dns_names: _STR_LIST_TYPE, *,
+                 CN: str = None, O: str = None, OU: str = None, L: str = None,
+                 ST: str = None, C: str = None):
+        """
+        Generates a new Certificate Signing Request (CSR) with the given
+        parameters.
+
+        :param key: Private key used to sign the CSR.
+        :param subj_alt_dns_names: DNS name(s) to be included in the Subject
+         Alternative Name (SAN).
+
+        :param CN: Common Name, typically a wildcard name.
+        :param O: Organization Name.
+        :param OU: Organizational Unit Name.
+        :param L: Locality or City Name.
+        :param ST: State or Province Name.
+        :param C: Country Name.
+
+        :return: A new ``x509CertSignReq`` representing the newly generated
+         csr.
+
+        :raises ValueError: If the given value for a certificate field is not
+         valid.
+        """
+
+        if isinstance(subj_alt_dns_names, str):
+            subj_alt_dns_names = (subj_alt_dns_names, )
+
+        if isinstance(subj_alt_dns_names, collections.Iterable):
+            if len(subj_alt_dns_names) == 0:
+                raise ValueError("At least one alternative subject name must "
+                                 "be given.")
+
+        # Build the Distinguished Name
+        dn = []
+        try:
+            if CN:
+                dn.append(x509.NameAttribute(NameOID.COMMON_NAME, CN))
+            if O:
+                dn.append(x509.NameAttribute(NameOID.ORGANIZATION_NAME, O))
+            if OU:
+                dn.append(
+                    x509.NameAttribute(NameOID.ORGANIZATIONAL_UNIT_NAME, OU)
+                )
+            if L:
+                dn.append(x509.NameAttribute(NameOID.LOCALITY_NAME, L))
+            if ST:
+                dn.append(
+                    x509.NameAttribute(NameOID.STATE_OR_PROVINCE_NAME, ST)
+                )
+            if C:
+                dn.append(x509.NameAttribute(NameOID.COUNTRY_NAME, C))
+        except ValueError as e:
+            raise ValueError("Invalid value: {}".format(str(e)))
+
+        # Build the SAN
+        san = []
+        for name in subj_alt_dns_names:
+            san.append(x509.DNSName(name))
+
+        # Build the CSR Parameters
+        builder = x509.CertificateSigningRequestBuilder().subject_name(
+            x509.Name(dn)
+        ).add_extension(
+            x509.SubjectAlternativeName(san),
+            critical=False
+        )
+
+        # Sign the CSR
+        private_key = serialization.load_der_private_key(
+            key.to_bytes(encoding=EncodingType.DER),
+            None,
+            default_backend()
+        )
+        try:
+            csr = builder.sign(private_key, hashes.SHA256(), default_backend())
+        except InvalidCodepoint as e:
+            raise ValueError("Invalid value: {}".format(str(e)))
+
+        # Serialize the CSR to Bytes
+        csr_bytes = csr.public_bytes(EncodingType.DER)
+
+        return cls(data=csr_bytes)
 
     def __init__(self, data: bytes):
         """

@@ -73,10 +73,6 @@ class FakeTestKey(asymmetric.AsymmetricKey):
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture(scope="session", params=KeyAlgorithmType)
-def key_algorithm(request):
-    return request.param
-
 
 @pytest.fixture(scope="session", params=EncodingType)
 def public_key_encoding(request):
