@@ -42,7 +42,7 @@ def _get_version(vt):                                                           
     return '.'.join(vt[:i]) + '.'.join(vt[i:])                                  # pragma: nocover # noqa
 
 # Read the Version from __init__.py Manually by Opening the File
-init = os.path.join(here, NAME.replace("-", "_"), '__init__.py')
+init = os.path.join(here, 'arroyo', '__version__.py')
 version_line = list(filter(lambda l: l.startswith('VERSION'), open(init)))[0]
 
 VERSION = _get_version(eval(version_line.split('=')[-1]))
@@ -65,14 +65,12 @@ setup(
     maintainer_email='matt@arroyonetworks.com',
     url=upstream_url,
     download_url=download_url.format(VERSION),
-    packages=find_packages(
-        exclude=["*.tests", "*.tests.*", "tests.*", "tests"]
-    ),
+    packages=['arroyo'],
     include_package_data=True,
     license='MIT',
     platforms=['any'],
     install_requires=[
-        'arroyo>=1.1',
+        'arroyo>=1.2',
         'cryptography>=1.4'
     ],
     tests_require=[
