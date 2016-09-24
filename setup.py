@@ -42,7 +42,7 @@ def _get_version(vt):                                                           
     return '.'.join(vt[:i]) + '.'.join(vt[i:])                                  # pragma: nocover # noqa
 
 # Read the Version from __init__.py Manually by Opening the File
-init = os.path.join(here, 'arroyo', '__version__.py')
+init = os.path.join(here, 'arroyo', 'crypto', '__init__.py')
 version_line = list(filter(lambda l: l.startswith('VERSION'), open(init)))[0]
 
 VERSION = _get_version(eval(version_line.split('=')[-1]))
@@ -65,7 +65,7 @@ setup(
     maintainer_email='matt@arroyonetworks.com',
     url=upstream_url,
     download_url=download_url.format(VERSION),
-    packages=['arroyo'],
+    packages=['arroyo.crypto'],
     include_package_data=True,
     license='MIT',
     platforms=['any'],
@@ -79,11 +79,7 @@ setup(
         'pytest-cov',
         'pytest-timeout'
     ],
-    entry_points={
-        'arroyo': [
-            'crypto = arroyo_crypto'
-        ]
-    },
+    zip_safe=False,
     keywords=["x509", "rsa", "dsa", "ecdsa", "crypto", "asymmetric",
               "cryptography", "ssl", "tls", "jose", "jwk", "jwt"],
     classifiers=[

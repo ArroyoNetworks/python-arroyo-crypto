@@ -16,8 +16,8 @@ from .test_asymmetric import get_public_key_filename
 
 # x509 Tests
 
-from arroyo_crypto.crypto import EncodingType, KeyAlgorithmType
-from arroyo_crypto.crypto import x509
+from arroyo.crypto import EncodingType, KeyAlgorithmType
+from arroyo.crypto import x509
 
 
 # --------------------------------------------------------------------------- #
@@ -200,6 +200,13 @@ def test_cert_invalid_data_value():
     with pytest.raises(ValueError):
         x509.x509Cert(data=b'\x00\x01\x02')
 
+
+def test_cert_issuer(encoding):
+
+    cert = x509.x509Cert(data=get_cert_bytes(encoding))
+
+    assert isinstance(cert.issuer, dict)
+    assert 'commonName' in cert.issuer
 
 def test_cert_public_key(encoding):
 

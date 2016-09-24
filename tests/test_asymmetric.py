@@ -13,8 +13,8 @@ import pytest
 
 # Asymmetric Key Tests
 
-from arroyo_crypto.crypto import KeyAlgorithmType, EncodingType
-from arroyo_crypto.crypto import asymmetric
+from arroyo.crypto import KeyAlgorithmType, EncodingType
+from arroyo.crypto import asymmetric
 
 
 # --------------------------------------------------------------------------- #

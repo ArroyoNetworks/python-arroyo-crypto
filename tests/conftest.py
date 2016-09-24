@@ -9,7 +9,7 @@ import random
 import pytest
 
 
-from arroyo_crypto.crypto import KeyAlgorithmType
+from arroyo.crypto import KeyAlgorithmType
 
 
 # --------------------------------------------------------------------------- #

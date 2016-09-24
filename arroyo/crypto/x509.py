@@ -23,7 +23,7 @@ from . import EncodingType
 
 # Typing
 
-from typing import Union, List
+from typing import Union, List, Dict
 from arroyo.crypto import PrivateKey
 
 
@@ -178,6 +178,13 @@ class x509Cert(x509Base):
 
     def __contains__(self, item):
         return self.public_key == item
+
+    @property
+    def issuer(self) -> Dict[str, str]:
+        issuer = {}
+        for name in self._x509_obj.issuer:
+            issuer[name.oid._name] = name.value
+        return issuer
 
     @property
     def public_key(self) -> PublicKey:
