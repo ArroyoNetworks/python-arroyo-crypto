@@ -5,6 +5,7 @@
 VERSION = (1, 1)
 # --------------------------------------------------------------------------- #
 
+
 def _get_version(vt):                                                           # pragma: nocover # noqa
     vt = tuple(map(str, vt))                                                    # pragma: nocover # noqa
     m = map(lambda v: v.startswith(('a', 'b', 'rc')), vt)                       # pragma: nocover # noqa

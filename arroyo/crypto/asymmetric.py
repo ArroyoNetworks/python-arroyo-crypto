@@ -553,7 +553,11 @@ class PrivateKey(AsymmetricKey):
         else:
             password = serialization.NoEncryption()
         encoding = encoding or self.encoding
-        fmt = fmt or serialization.PrivateFormat.PKCS8
+        fmt = fmt or (
+            serialization.PrivateFormat.PKCS8 if self.algorithm is not
+            KeyAlgorithmType.ECDSA else
+            serialization.PrivateFormat.TraditionalOpenSSL
+        )
         return self._key.private_bytes(encoding, fmt, password)
 
     def to_jwk(self):

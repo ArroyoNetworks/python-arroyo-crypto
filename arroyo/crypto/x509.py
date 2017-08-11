@@ -3,8 +3,9 @@
 
 import logging
 
-from abc import ABCMeta, abstractmethod
+from abc import ABCMeta
 import collections
+import datetime
 
 from cryptography import x509
 from cryptography.x509.oid import NameOID, ExtensionOID
@@ -25,9 +26,6 @@ from . import EncodingType
 
 from typing import Union, List, Dict
 from arroyo.crypto import PrivateKey
-
-
-_STR_LIST_TYPE = Union[List[str], str]
 
 
 # --------------------------------------------------------------------------- #
@@ -107,12 +105,21 @@ class x509Base(metaclass=ABCMeta):
             raise ValueError("Encoding must be a type of EncodingType")
         self.__encoding = value
 
-    @abstractmethod
-    def to_bytes(self, *, encoding: EncodingType) -> bytes:
+    def to_bytes(self, *, encoding: EncodingType = None) -> bytes:
         """
         Returns the x509 object as bytes.
+
+        By default, the value of the ``encoding`` instance attribute is used
+        to determine the byte serialization encoding. This behavior can be
+        overridden by providing an explicit `encoding` value.
+
+        :param encoding: Override the object's encoding before converting to
+         bytes.
+        :return: The bytes of the x509  object encoded with the given
+         encoding.
         """
-        ...                                                   # pragma: nocover
+        encoding = encoding or self.encoding
+        return self._x509_obj.public_bytes(encoding)
 
     def to_file(self, path: str, **kwargs) -> bytes:
         """
@@ -134,6 +141,55 @@ class x509Cert(x509Base):
     This class is used to hide implementation level details for how
     X509 certificates are actually handled.
     """
+
+    @classmethod
+    def from_csr(cls, csr: "x509CertSignReq", key: PrivateKey,
+                 issuer: "x509Cert" = None,
+                 not_valid_before: datetime.datetime = None,
+                 not_valid_after: datetime.datetime = None,
+                 serial_number: int = None, is_ca: bool = False):
+
+        issuer = issuer or csr                          # type: x509Base
+        private_key = serialization.load_der_private_key(
+            key.to_bytes(encoding=EncodingType.DER),
+            None,
+            default_backend()
+        )
+
+        builder = x509.CertificateBuilder().subject_name(
+            csr._x509_obj.subject
+        ).issuer_name(
+            issuer._x509_obj.subject
+        ).public_key(
+            csr._x509_obj.public_key()
+        ).not_valid_before(
+            not_valid_before or datetime.datetime.today()
+        ).not_valid_after(
+            # TODO: Will probably want this to max out at the issuer's
+            # TODO: not_valid_after value (if provided)
+            not_valid_after or (
+                datetime.datetime.today() + datetime.timedelta(days=365 * 2))
+        ).serial_number(
+            serial_number or x509.random_serial_number()
+        )
+
+        # Load Extensions
+        for e in csr._x509_obj.extensions:
+            builder = builder.add_extension(
+                e.value,
+                critical=e.critical
+            )
+
+        if is_ca:
+            builder = builder.add_extension(
+                x509.BasicConstraints(True, None),
+                critical=True
+            )
+
+        # Sign and Return a New x509Cert Instance containing the new Cert.
+        cert = builder.sign(private_key, hashes.SHA256(), default_backend())
+        crt_bytes = cert.public_bytes(EncodingType.DER)
+        return cls(data=crt_bytes)
 
     def __init__(self, data: bytes):
         """
@@ -197,21 +253,6 @@ class x509Cert(x509Base):
         data = k.public_bytes(self.encoding, fmt)
         return PublicKey(data=data)
 
-    def to_bytes(self, *, encoding: EncodingType = None) -> bytes:
-        """
-        Returns the certificate as bytes.
-
-        By default, the value of the ``encoding`` instance attribute is used
-        to determine the byte serialization encoding. This behavior can be
-        overridden by providing an explicit `encoding` value.
-
-        :param encoding: Override the object's encoding before converting to
-         bytes.
-        :return: The public bytes of the x509 certificate.
-        """
-        encoding = encoding or self.encoding
-        return self._x509_obj.public_bytes(encoding)
-
 
 class x509CertSignReq(x509Base):
     """
@@ -219,7 +260,7 @@ class x509CertSignReq(x509Base):
     """
 
     @classmethod
-    def generate(cls, key: PrivateKey, subj_alt_dns_names: _STR_LIST_TYPE, *,
+    def generate(cls, key: PrivateKey, subj_alt_dns_names: list = None, *,
                  CN: str = None, O: str = None, OU: str = None, L: str = None,
                  ST: str = None, C: str = None):
         """
@@ -244,15 +285,12 @@ class x509CertSignReq(x509Base):
          valid.
         """
 
+        subj_alt_dns_names = subj_alt_dns_names or list()
+
         if isinstance(subj_alt_dns_names, str):
-            subj_alt_dns_names = (subj_alt_dns_names, )
+            subj_alt_dns_names = list(subj_alt_dns_names, )
 
-        if isinstance(subj_alt_dns_names, collections.Iterable):
-            if len(subj_alt_dns_names) == 0:
-                raise ValueError("At least one alternative subject name must "
-                                 "be given.")
-
-        # Build the Distinguished Name
+        # Build the Subject Distinguished Name
         dn = []
         try:
             if CN:
@@ -350,19 +388,3 @@ class x509CertSignReq(x509Base):
         )
 
         return san.value.get_values_for_type(x509.DNSName)
-
-    def to_bytes(self, *, encoding: EncodingType = None) -> bytes:
-        """
-        Returns the CSR as bytes.
-
-        By default, the value of the ``encoding`` instance attribute is used
-        to determine the byte serialization encoding. This behavior can be
-        overridden by providing an explicit `encoding` value.
-
-        :param encoding: Override the object's encoding before converting to
-         bytes.
-        :return: The bytes of the x509 signing request encoded with the given
-         encoding.
-        """
-        encoding = encoding or self.encoding
-        return self._x509_obj.public_bytes(encoding)
